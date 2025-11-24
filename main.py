@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
         return
 
 
-    @asyncSlot()
+    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
     async def ask_code_dialog(self, title, label):
         dlg = CodeDialog(title, label, self)
         dlg.setModal(True)
@@ -127,7 +127,7 @@ class MainWindow(QMainWindow):
             return "", False
 
 
-    @asyncSlot()
+    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
     async def show_async_message(self, title, message, icon=QMessageBox.Icon.Information):
         dlg = AsyncMessageBox(title, message, icon, self)
         dlg.show()
@@ -316,8 +316,8 @@ class MainWindow(QMainWindow):
         return
 
 
-
-    @asyncSlot()
+    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
+    # Called with asyncio.create_task() from extract_group
     async def extract_proc(self, link):
         global Extract, Members_ext
         
@@ -399,7 +399,8 @@ class MainWindow(QMainWindow):
         return
 
 
-    @asyncSlot()
+    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
+    # Called with asyncio.create_task() from start_adder
     async def run_adder(self):
         global Status, Members, Okm, Badm, Runs, Final, max_runed
 
@@ -437,7 +438,8 @@ class MainWindow(QMainWindow):
         self.ui.input_link_add.setReadOnly(False)
         self.ui.number_add_bot.setReadOnly(False)
         self.ui.number_acc_add.setReadOnly(False)
-    
+
+
     async def adder_account(self, phone: str , link: str , number_add: int):
         global Status , Members , Okm , Badm, Runs , Final
         if Status == False:
@@ -666,12 +668,12 @@ class MainWindow(QMainWindow):
             f.write(log)
         QMessageBox.information(self, "Success", "save log to file => {}".format(name))
         return
-    
-    
+
+
     def get_time(self) -> str:
         return str(datetime.now().strftime("[%Y-%m-%d %H:%M:%S] "))
-                
-                
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
