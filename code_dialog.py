@@ -18,7 +18,7 @@ class CodeDialog(QDialog):
         layout.addWidget(self.buttons)
         self.setLayout(layout)
 
-    def get_value(self):
+    def get_value(self) -> str:
         return self.input.text()
 
 

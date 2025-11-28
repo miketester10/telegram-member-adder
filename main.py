@@ -113,29 +113,64 @@ class MainWindow(QMainWindow):
         return
 
 
-    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
-    async def ask_code_dialog(self, title, label):
-        dlg = CodeDialog(title, label, self)
-        dlg.setModal(True)
-        dlg.show()
-        while dlg.result() == 0:  # QDialog.DialogCode.Rejected = 0, Accepted = 1
-            await asyncio.sleep(0.1)
+    async def await_dialog(self, dlg: CodeDialog) -> int:
+        # Get the current asyncio event loop.
+        # This is needed so we can create a Future linked to Qt signals.
+        loop = asyncio.get_event_loop()
+        # Create a Future that will be awaited later.
+        # The Future will be completed when the dialog emits its "finished" signal.
+        future = loop.create_future()
 
-        if dlg.result() == 1:
+        # Define a callback function that will be triggered when the dialog finishes.
+        # "result_code" is the integer provided by QDialog.finished(int),
+        # typically 1 = Accepted, 0 = Rejected.
+        def on_finished(result_code: int) -> None:
+            if not future.done():
+                future.set_result(result_code) # Set the result of the Future and mark it as done. So the awaiting coroutine can continue.
+                print("Dialog box closed with code: {}".format(result_code))
+
+        # Connect the Qt "finished" signal of the dialog to our callback.
+        # This ensures that when the dialog closes, the Future is resolved.
+        dlg.finished.connect(on_finished)
+
+        # Wait until the Future is completed by the "finished" signal.
+        # The coroutine pauses here until the user closes the dialog.
+        result: int = await future
+
+        # Clean up: safely disconnect the signal to avoid leftover callbacks.
+        dlg.finished.disconnect(on_finished)
+
+        return result
+
+
+    # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
+    async def ask_code_dialog(self, title, label) -> tuple[str, bool]:
+        # Create the dialog window (a QDialog subclass) that will ask the user for code.
+        dlg = CodeDialog(title, label, self)
+        # Make the dialog modal (blocks interaction with the parent window,
+        # but does NOT block the event loop because we use .show() instead of .exec()).
+        dlg.setModal(True)
+        # Show the dialog non-blocking (unlike exec()).
+        # The event loop continues running normally.
+        dlg.show()
+
+        # Await the dialog to be closed and get the result code.
+        result_code = await self.await_dialog(dlg)
+
+        # If the dialog was accepted (result_code == 1),
+        # return the value entered by the user and a success flag (True).
+        if result_code == 1:
             return dlg.get_value(), True
         else:
+            # Otherwise the dialog was rejected or closed, so return empty string and False.
             return "", False
 
 
     # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
-    async def show_async_message(self, title, message, icon=QMessageBox.Icon.Information):
+    async def show_async_message(self, title, message, icon=QMessageBox.Icon.Information) -> None:
         dlg = AsyncMessageBox(title, message, icon, self)
         dlg.show()
-
-        while dlg.result is None:
-            await asyncio.sleep(0.05)
-
-        return dlg
+        await self.await_dialog(dlg)
 
 
     def do_long_task(self):
