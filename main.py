@@ -136,10 +136,7 @@ class MainWindow(QMainWindow):
         # Wait until the Future is completed by the "finished" signal.
         # The coroutine pauses here until the user closes the dialog.
         result: int = await future
-
-        # Clean up: safely disconnect the signal to avoid leftover callbacks.
-        dlg.finished.disconnect(on_finished)
-
+        
         return result
 
 
