@@ -1,7 +1,7 @@
 import sys
 import asyncio
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QMessageBox, QProgressDialog
+    QApplication, QMainWindow, QMessageBox, QProgressDialog, QDialog
 )
 from PyQt6.QtCore import Qt
 from panel import Ui_MainWindow
@@ -111,34 +111,46 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Error", "Adding is not active.")
         return
+ 
+    # Full version with a named callback function
+    # async def await_dialog(self, dlg: QDialog) -> int:
+    #     # Get the current asyncio event loop.
+    #     # This is needed so we can create a Future linked to Qt signals.
+    #     loop = asyncio.get_event_loop()
+    #     # Create a Future that will be awaited later.
+    #     # The Future will be completed when the dialog emits its "finished" signal.
+    #     future = loop.create_future()
 
+    #     # Define a callback function that will be triggered when the dialog finishes.
+    #     # "result_code" is the integer provided by QDialog.finished(int),
+    #     # typically 1 = Accepted, 0 = Rejected.
+    #     def _on_finished(result_code: int) -> None:
+    #         if not future.done():
+    #             future.set_result(result_code) # Set the result of the Future and mark it as done. So the awaiting coroutine can continue.
+    #             print("Dialog box closed with code: {}".format(result_code))
+    #         else:
+    #             print("Dialog box closed, but Future is already done.")
 
-    async def await_dialog(self, dlg: CodeDialog) -> int:
-        # Get the current asyncio event loop.
-        # This is needed so we can create a Future linked to Qt signals.
+    #     # Connect the Qt "finished" signal of the dialog to our callback.
+    #     # This ensures that when the dialog closes, the Future is resolved.
+    #     dlg.finished.connect(_on_finished)
+
+    #     # Wait until the Future is completed by the "finished" signal.
+    #     # The coroutine pauses here until the user closes the dialog.
+    #     result: int = await future
+
+    #     return result
+
+    # Simplified version with a lambda function
+    async def await_dialog(self, dlg: QDialog) -> int:
         loop = asyncio.get_event_loop()
-        # Create a Future that will be awaited later.
-        # The Future will be completed when the dialog emits its "finished" signal.
         future = loop.create_future()
 
-        # Define a callback function that will be triggered when the dialog finishes.
-        # "result_code" is the integer provided by QDialog.finished(int),
-        # typically 1 = Accepted, 0 = Rejected.
-        def on_finished(result_code: int) -> None:
-            if not future.done():
-                future.set_result(result_code) # Set the result of the Future and mark it as done. So the awaiting coroutine can continue.
-                print("Dialog box closed with code: {}".format(result_code))
+        dlg.finished.connect(lambda result_code: future.set_result(result_code) if not future.done() else None)
 
-        # Connect the Qt "finished" signal of the dialog to our callback.
-        # This ensures that when the dialog closes, the Future is resolved.
-        dlg.finished.connect(on_finished)
-
-        # Wait until the Future is completed by the "finished" signal.
-        # The coroutine pauses here until the user closes the dialog.
         result: int = await future
-        
-        return result
 
+        return result
 
     # No @asyncSlot() needed because it's not connected to any Qt signal (clicked, etc.)
     async def ask_code_dialog(self, title, label) -> tuple[str, bool]:
@@ -152,7 +164,7 @@ class MainWindow(QMainWindow):
         dlg.show()
 
         # Await the dialog to be closed and get the result code.
-        result_code = await self.await_dialog(dlg)
+        result_code: int = await self.await_dialog(dlg)
 
         # If the dialog was accepted (result_code == 1),
         # return the value entered by the user and a success flag (True).
